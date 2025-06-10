@@ -4,10 +4,10 @@ session_start();
 require_once __DIR__ . '/../php/config/Security.php';
 
 // Configurações do banco de dados
-$host = 'db';
+$host = 'mysql';
 $dbname = 'advocacia_db';
-$username = 'root';
-$password = 'root';
+$username = 'advocacia_user';
+$password = 'advocacia_pass';
 
 try {
     $conn = new mysqli($host, $username, $password, $dbname);
