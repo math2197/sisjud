@@ -1,132 +1,111 @@
 <?php
 require_once 'config.php';
+requireLogin();
 
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
-    exit;
-}
+$mensagem = '';
+$tipo_mensagem = '';
 
-$user_id = $_SESSION['user_id'];
-$msg = '';
-$msg_senha = '';
-
-// Diretório para salvar as fotos de perfil
-$upload_dir = __DIR__ . '/uploads/perfis/';
-if (!is_dir($upload_dir)) {
-    mkdir($upload_dir, 0775, true);
-}
-
-// Upload da foto de perfil
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_foto'])) {
-    if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
-        $nome_arquivo = basename($_FILES['foto']['name']);
-        $ext = strtolower(pathinfo($nome_arquivo, PATHINFO_EXTENSION));
-        $ext_permitidas = ['jpg', 'jpeg', 'png', 'gif'];
-        if (!in_array($ext, $ext_permitidas)) {
-            $msg = '<div class="alert alert-danger">Formato de arquivo não permitido. Use JPG, PNG ou GIF.</div>';
-        } else {
-            $novo_nome = 'user_' . $user_id . '.' . $ext;
-            $destino = $upload_dir . $novo_nome;
-
-            if (move_uploaded_file($_FILES['foto']['tmp_name'], $destino)) {
-                $stmt = $pdo->prepare("UPDATE usuarios SET foto_perfil = ? WHERE id = ?");
-                $stmt->execute(['uploads/perfis/' . $novo_nome, $user_id]);
-                $msg = '<div class="alert alert-success">Foto de perfil atualizada com sucesso!</div>';
-            } else {
-                $msg = '<div class="alert alert-danger">Erro ao salvar a foto.</div>';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        $security->validateCSRFToken($_POST['csrf_token'] ?? '');
+        
+        if (isset($_POST['action'])) {
+            switch ($_POST['action']) {
+                case 'update_profile':
+                    $email = $_POST['email'];
+                    $current_password = $_POST['current_password'];
+                    $new_password = $_POST['new_password'];
+                    
+                    // Verifica se o usuário quer alterar a senha
+                    if (!empty($new_password)) {
+                        // Verifica a senha atual
+                        $stmt = $conn->prepare("SELECT password FROM usuarios WHERE id = ?");
+                        $stmt->bind_param("i", $_SESSION['user_id']);
+                        $stmt->execute();
+                        $result = $stmt->get_result();
+                        $user = $result->fetch_assoc();
+                        
+                        if (!$security->verifyPassword($current_password, $user['password'])) {
+                            throw new Exception("Senha atual incorreta");
+                        }
+                        
+                        // Atualiza com a nova senha
+                        $hashed_password = $security->hashPassword($new_password);
+                        $stmt = $conn->prepare("UPDATE usuarios SET email = ?, password = ? WHERE id = ?");
+                        $stmt->bind_param("ssi", $email, $hashed_password, $_SESSION['user_id']);
+                    } else {
+                        // Atualiza apenas o email
+                        $stmt = $conn->prepare("UPDATE usuarios SET email = ? WHERE id = ?");
+                        $stmt->bind_param("si", $email, $_SESSION['user_id']);
+                    }
+                    
+                    if ($stmt->execute()) {
+                        $security->logAction($_SESSION['user_id'], 'Atualização de perfil', 'usuarios', $_SESSION['user_id']);
+                        $mensagem = "Perfil atualizado com sucesso!";
+                        $tipo_mensagem = "success";
+                    } else {
+                        throw new Exception("Erro ao atualizar perfil");
+                    }
+                    break;
             }
         }
-    } else {
-        $msg = '<div class="alert alert-danger">Selecione uma foto válida.</div>';
-    }
-}
-
-// Alteração de senha
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['alterar_senha'])) {
-    $senha_atual = $_POST['senha_atual'] ?? '';
-    $nova_senha = $_POST['nova_senha'] ?? '';
-    $confirma_senha = $_POST['confirma_senha'] ?? '';
-
-    // Busca senha atual
-    $stmt = $pdo->prepare("SELECT password FROM usuarios WHERE id = ?");
-    $stmt->execute([$user_id]);
-    $hash_atual = $stmt->fetchColumn();
-
-    // Supondo que você usa password_hash/password_verify (recomendado)
-    if (!password_verify($senha_atual, $hash_atual)) {
-        $msg_senha = '<div class="alert alert-danger">Senha atual incorreta.</div>';
-    } elseif (strlen($nova_senha) < 6) {
-        $msg_senha = '<div class="alert alert-danger">A nova senha deve ter pelo menos 6 caracteres.</div>';
-    } elseif ($nova_senha !== $confirma_senha) {
-        $msg_senha = '<div class="alert alert-danger">As senhas não coincidem.</div>';
-    } else {
-        $nova_hash = password_hash($nova_senha, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare("UPDATE usuarios SET password = ? WHERE id = ?");
-        $stmt->execute([$nova_hash, $user_id]);
-        $msg_senha = '<div class="alert alert-success">Senha alterada com sucesso!</div>';
+    } catch (Exception $e) {
+        $mensagem = $e->getMessage();
+        $tipo_mensagem = "danger";
     }
 }
 
 // Busca dados do usuário
-$stmt = $pdo->prepare("SELECT username, email, foto_perfil FROM usuarios WHERE id = ?");
-$stmt->execute([$user_id]);
-$usuario = $stmt->fetch();
+$stmt = $conn->prepare("SELECT username, email FROM usuarios WHERE id = ?");
+$stmt->bind_param("i", $_SESSION['user_id']);
+$stmt->execute();
+$usuario = $stmt->get_result()->fetch_assoc();
+
+include 'header.php';
 ?>
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Perfil - SL Advocacia</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
-</head>
-<body>
-<?php include 'sidebar.php'; ?>
-<?php include 'header.php'; ?>
-<div class="main-content">
+
+<div class="container mt-4">
     <h2>Meu Perfil</h2>
-    <?php echo $msg; ?>
-    <div class="card p-4" style="max-width: 400px;">
-        <div class="text-center mb-3">
-            <?php if (!empty($usuario['foto_perfil']) && file_exists(__DIR__ . '/' . $usuario['foto_perfil'])): ?>
-                <img src="<?php echo htmlspecialchars($usuario['foto_perfil']); ?>" alt="Foto de Perfil" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
-            <?php else: ?>
-                <img src="avatar.png" alt="Foto de Perfil" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
-            <?php endif; ?>
+    
+    <?php if ($mensagem): ?>
+        <div class="alert alert-<?php echo $tipo_mensagem; ?>">
+            <?php echo htmlspecialchars($mensagem); ?>
         </div>
-        <form method="POST" enctype="multipart/form-data">
-            <div class="mb-3">
-                <label for="foto" class="form-label">Alterar Foto de Perfil</label>
-                <input type="file" name="foto" id="foto" class="form-control" accept="image/*" required>
-            </div>
-            <button type="submit" name="upload_foto" class="btn btn-bordo">Enviar</button>
-        </form>
-        <hr>
-        <p><strong>Usuário:</strong> <?php echo htmlspecialchars($usuario['username']); ?></p>
-        <p><strong>Email:</strong> <?php echo htmlspecialchars($usuario['email']); ?></p>
-    </div>
-    <div class="card p-4 mt-4" style="max-width: 400px;">
-        <h5>Alterar Senha</h5>
-        <?php echo $msg_senha; ?>
-        <form method="POST">
-            <div class="mb-3">
-                <label for="senha_atual" class="form-label">Senha Atual</label>
-                <input type="password" name="senha_atual" id="senha_atual" class="form-control" required>
-            </div>
-            <div class="mb-3">
-                <label for="nova_senha" class="form-label">Nova Senha</label>
-                <input type="password" name="nova_senha" id="nova_senha" class="form-control" required>
-            </div>
-            <div class="mb-3">
-                <label for="confirma_senha" class="form-label">Confirme a Nova Senha</label>
-                <input type="password" name="confirma_senha" id="confirma_senha" class="form-control" required>
-            </div>
-            <button type="submit" name="alterar_senha" class="btn btn-bordo">Alterar Senha</button>
-        </form>
+    <?php endif; ?>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" action="">
+                <input type="hidden" name="csrf_token" value="<?php echo $security->generateCSRFToken(); ?>">
+                <input type="hidden" name="action" value="update_profile">
+                
+                <div class="form-group mb-3">
+                    <label for="username">Usuário:</label>
+                    <input type="text" class="form-control" id="username" value="<?php echo htmlspecialchars($usuario['username']); ?>" disabled>
+                </div>
+                
+                <div class="form-group mb-3">
+                    <label for="email">Email:</label>
+                    <input type="email" class="form-control" name="email" id="email" value="<?php echo htmlspecialchars($usuario['email']); ?>" required>
+                </div>
+                
+                <div class="form-group mb-3">
+                    <label for="current_password">Senha Atual:</label>
+                    <input type="password" class="form-control" name="current_password" id="current_password">
+                    <small class="form-text text-muted">Preencha apenas se desejar alterar a senha</small>
+                </div>
+                
+                <div class="form-group mb-3">
+                    <label for="new_password">Nova Senha:</label>
+                    <input type="password" class="form-control" name="new_password" id="new_password">
+                    <small class="form-text text-muted">Deixe em branco para manter a senha atual</small>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Atualizar Perfil</button>
+            </form>
+        </div>
     </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+
+<?php include 'footer.php'; ?>
 

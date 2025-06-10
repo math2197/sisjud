@@ -91,6 +91,22 @@ CREATE TABLE IF NOT EXISTS processo_etiqueta (
     FOREIGN KEY (etiqueta_id) REFERENCES etiquetas(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS logs_auditoria (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT,
+    acao VARCHAR(255) NOT NULL,
+    tabela_afetada VARCHAR(100),
+    registro_id INT,
+    dados_anteriores TEXT,
+    dados_novos TEXT,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
+);
+
+-- Atualizando o usuário admin com senha bcrypt (admin123)
+DELETE FROM usuarios WHERE username = 'admin';
 INSERT INTO usuarios (username, password, email, perfil)
-VALUES ('admin', MD5('admin123'), 'admin@advocacia.com', 'admin');
+VALUES ('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin@advocacia.com', 'admin');
 
