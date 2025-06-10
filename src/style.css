@@ -1,0 +1,107 @@
+body {
+    background-color: #fff;
+    color: #800020;
+}
+.btn-bordo {
+    background-color: #800020 !important;
+    border-color: #800020 !important;
+    color: #fff !important;
+}
+.btn-bordo:hover, .btn-bordo:focus {
+    background-color: #a8324a !important;
+    border-color: #a8324a !important;
+    color: #fff !important;
+}
+.table thead, .table-dark th {
+    background-color: #800020 !important;
+    color: #fff !important;
+}
+.table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: #f8f9fa !important;
+}
+input.form-control, select.form-control, textarea.form-control {
+    border: 1px solid #800020;
+}
+.main-content {
+    margin-left: 250px;
+    margin-top: 68px;
+    padding: 24px;
+}
+.badge-status-finalizado {
+    background-color: #198754 !important; /* Verde */
+    color: #fff !important;
+}
+.badge-status-alerta {
+    background-color: #ffc107 !important; /* Amarelo */
+    color: #212529 !important;
+}
+.text-bordo {
+    color: #800020 !important;
+}
+.card-bordo {
+    background-color: #800020 !important;
+    color: #fff !important;
+}
+.sidebar {
+    width: 220px;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: #800020;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    padding-top: 20px;
+}
+.sidebar .logo-sl {
+    font-weight: bold;
+    font-size: 2rem;
+    color: #fff;
+    letter-spacing: 2px;
+    margin: 0 0 30px 20px;
+}
+.sidebar .nav-link {
+    color: #fff;
+    padding: 12px 25px;
+    font-size: 1.1rem;
+    text-decoration: none;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.sidebar .nav-link:hover, .sidebar .nav-link.active {
+    background: #a8324a;
+    color: #fff;
+}
+.sidebar .sidebar-menu {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+}
+.sidebar .sidebar-footer {
+    margin-top: auto;
+    border-top: 1px solid #fff2;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+#graficoStatus {
+    max-width: 400px;
+    max-height: 400px;
+}
+
+@media (max-width: 767.98px) {
+    .table td, .table th {
+        padding: 0.4rem 0.5rem;
+        font-size: 0.95rem;
+    }
+    .fw-bold { font-size: 1.05rem; }
+}
+
+.main-content, .processos-wrapper, .editar-wrapper {
+    margin-top: 68px;
+}
+

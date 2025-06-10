@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.11
+    container_name: traefik
+    restart: always
+    command:
+      - --api.dashboard=true
+      - --api.insecure=false
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.le.acme.tlschallenge=true
+      - --certificatesresolvers.le.acme.email=SEU_EMAIL@embrapii.org.br
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      - --log.level=INFO
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_letsencrypt:/letsencrypt
+    networks:
+      - traefik-public
+
+  php-apache:
+    container_name: advocacia-php
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - mysql
+    ports:
+      - "8000:80"
+    volumes:
+      - ./:/var/www/html
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.advocacia-php.rule=Host(`sladvocacia.embrapii.org.br`)"
+      - "traefik.http.routers.advocacia-php.entrypoints=websecure"
+      - "traefik.http.routers.advocacia-php.tls.certresolver=le"
+      - "traefik.http.services.advocacia-php.loadbalancer.server.port=80"
+    networks:
+      - traefik-public
+      - advocacia-network
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n-n8n-1
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_SECURE_COOKIE=false
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=senha_forte
+      # - N8N_HOST=n8n-lsadvocacia.embrapii.org.br
+      - N8N_PORT=5678
+      # - WEBHOOK_TUNNEL_URL=https://n8n-lsadvocacia.embrapii.org.br/
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.rule=Host(`n8n-lsadvocacia.embrapii.org.br`)"
+      - "traefik.http.routers.n8n.entrypoints=websecure"
+      - "traefik.http.routers.n8n.tls.certresolver=le"
+      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
+    networks:
+      - traefik-public
+
+  mysql:
+    container_name: advocacia-mysql
+    image: mysql:8.0-debian
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: advocacia_db
+      MYSQL_USER: advocacia_user
+      MYSQL_PASSWORD: advocacia_pass
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+      - ./database.sql:/docker-entrypoint-initdb.d/database.sql
+    networks:
+      - advocacia-network
+
+  phpmyadmin:
+    container_name: advocacia-phpmyadmin
+    image: phpmyadmin:latest
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+    networks:
+      - advocacia-network
+
+volumes:
+  mysql_data:
+  traefik_letsencrypt:
+
+networks:
+  traefik-public:
+    external: true
+  advocacia-network:
+    driver: bridge
+
