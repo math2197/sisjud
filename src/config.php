@@ -1,13 +1,15 @@
 <?php
-session_start();
-
 require_once __DIR__ . '/../php/config/Security.php';
+
+// Configura as opções de sessão antes de iniciá-la
+Security::configureSession();
+session_start();
 
 // Configurações do banco de dados
 $host = 'mysql';
 $dbname = 'advocacia_db';
-$username = 'advocacia_user';
-$password = 'advocacia_pass';
+$username = 'root';
+$password = 'root123';
 
 try {
     $conn = new mysqli($host, $username, $password, $dbname);
@@ -21,9 +23,6 @@ try {
 
 // Inicializa o objeto de segurança
 $security = new Security($conn);
-
-// Configurações de sessão segura
-$security->setSecureSession();
 
 // Regenera o ID da sessão a cada 30 minutos
 if (!isset($_SESSION['last_regeneration']) || 

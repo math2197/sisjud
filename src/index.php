@@ -29,9 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 header("Location: dashboard.php");
                 exit();
+            } else {
+                $error = 'Senha incorreta';
             }
+        } else {
+            $error = 'Usuário não encontrado';
         }
-        $error = 'Usuário ou senha inválidos';
     } else {
         $error = 'Por favor, preencha todos os campos';
     }

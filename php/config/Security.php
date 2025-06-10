@@ -6,6 +6,14 @@ class Security {
         $this->conn = $conn;
     }
     
+    public static function configureSession() {
+        ini_set('session.cookie_httponly', 1);
+        ini_set('session.cookie_secure', 1);
+        ini_set('session.cookie_samesite', 'Strict');
+        ini_set('session.use_strict_mode', 1);
+        ini_set('session.use_only_cookies', 1);
+    }
+    
     public function logAction($usuario_id, $acao, $tabela_afetada = null, $registro_id = null, $dados_anteriores = null, $dados_novos = null) {
         $ip = $_SERVER['REMOTE_ADDR'];
         $user_agent = $_SERVER['HTTP_USER_AGENT'];
@@ -56,13 +64,5 @@ class Security {
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_regenerate_id(true);
         }
-    }
-    
-    public function setSecureSession() {
-        ini_set('session.cookie_httponly', 1);
-        ini_set('session.cookie_secure', 1);
-        ini_set('session.cookie_samesite', 'Strict');
-        ini_set('session.use_strict_mode', 1);
-        ini_set('session.use_only_cookies', 1);
     }
 } 
